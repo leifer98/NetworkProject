@@ -37,4 +37,4 @@ if __name__ == '__main__':
     print(
         f"Starting DNS server on IP {DNS_SERVER_IP} and port {DNS_SERVER_PORT}")
     sniff(
-        filter=f"udp dst port 53 and ip dst {DNS_SERVER_IP}", prn=handle_dns_request)
+        filter=f"udp dst port 53 and ip dst {DNS_SERVER_IP}",iface=conf.iface, prn=handle_dns_request)

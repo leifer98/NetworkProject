@@ -40,7 +40,7 @@ def get_dns_ip():  # Get the DNS server IP address from the DHCP server
         sendp(dhcp_discover)
         time.sleep(1)
         print("DHCP discover sent, waiting for offer...")
-        for packet in sniff(filter="udp and dst port 68 ", iface="Ethernet", timeout=1, count=1):
+        for packet in sniff(filter="udp and dst port 68 ", iface=conf.iface, timeout=1, count=1):
             if (DHCP in packet) and (packet[DHCP].options[0][1] == 2):
                 temp_ip = packet[BOOTP].yiaddr
                 discover_received = True
@@ -70,7 +70,7 @@ def get_dns_ip():  # Get the DNS server IP address from the DHCP server
         time.sleep(1)
         # print(dhcp_request.summary)
         print("DHCP request sent, waiting for ack...")
-        for packet in sniff(filter="udp and dst port 68 ", iface="Ethernet", timeout=1, count=1):
+        for packet in sniff(filter="udp and dst port 68 ", iface=conf.iface, timeout=1, count=1):
             if DHCP in packet and packet[DHCP].options[0][1] == 5:  # DHCP ACK
                 offer_received = True
                 break

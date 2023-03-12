@@ -12,6 +12,10 @@ servers = [
 if __name__ == "__main__":
     print("starting servers")
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    processes = []
     for server in servers:
-        command = ["python3", "file_server_socket.py"] + list(server)
-        subprocess.Popen(command)
+        command = ["python","file_server_socket.py",server[0],server[1],server[2]]
+        process = subprocess.Popen(command)
+        processes.append(process)
+    for process in processes:
+        process.wait()

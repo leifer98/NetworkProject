@@ -109,6 +109,7 @@ def send_request(server_address, request):
     client_socket.connect(server_address)
     client_socket.sendto(request)
     response = client_socket.recvfrom(1024).decode()
+    print(response)
     client_socket.close()
     return response
 
@@ -147,7 +148,7 @@ def get_img_from_local_server(host, port):
     s.send(b'GET / HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n')
     # receive all image data
     data = b''
-    s.settimeout(1.5)
+    s.settimeout(2)
     while True:
         try:
             part = s.recv(1024)
@@ -166,6 +167,7 @@ def get_img_and_show(app_ip):
     h = url.netloc.split(':')[0]
     p = url.netloc.split(':')[1]
     # from here change to clientttt!!!!!
+    print((h,p))
     img_data = get_img_from_local_server(h, p)
     print(f'got {len(img_data)} bytes')
     show_image(img_data)

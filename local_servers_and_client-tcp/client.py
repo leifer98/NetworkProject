@@ -20,6 +20,7 @@ new_ip = ""
 dns_server = ""
 APP_SERVER_P = 30353
 CLIENT_P = 20054
+APP_SERVER_ADDR = "the_famous_cat.com"
 
 
 def generate_random_mac():
@@ -47,7 +48,7 @@ def get_dns_ip():  # Get the DNS server IP address from the DHCP server
         sendp(dhcp_discover)
         time.sleep(1)
         print("DHCP discover sent, waiting for offer...")
-        for packet in sniff(filter="udp and dst port 68 ", iface="Ethernet", timeout=1, count=1):
+        for packet in sniff(filter="udp and dst port 68 ", iface=conf.iface, timeout=1, count=1):
             if (DHCP in packet) and (packet[DHCP].options[0][1] == 2):
                 temp_ip = packet[BOOTP].yiaddr
                 discover_received = True
@@ -77,7 +78,7 @@ def get_dns_ip():  # Get the DNS server IP address from the DHCP server
         time.sleep(1)
         # print(dhcp_request.summary)
         print("DHCP request sent, waiting for ack...")
-        for packet in sniff(filter="udp and dst port 68 ", iface="Ethernet", timeout=1, count=1):
+        for packet in sniff(filter="udp and dst port 68 ", iface=conf.iface, timeout=1, count=1):
             if DHCP in packet and packet[DHCP].options[0][1] == 5:  # DHCP ACK
                 offer_received = True
                 break
@@ -150,11 +151,16 @@ def get_img_from_local_server(host, port):
     s.send(b"GET / HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n")
     # receive all image data
     data = b""
+    s.settimeout(2)
     while True:
-        part = s.recv(1024)
-        data += part
-        if len(part) < 1024:
-            break
+        try:
+            part = s.recv(1024)
+            data += part
+        except:
+            if data == b'':
+                continue
+            else:
+                break
     s.close()
     return data
 
@@ -192,12 +198,12 @@ if __name__ == "__main__":
         print("DNS server: " + dns_server)
 
     # get the ip of app.html from dns server
-    app_ip = get_app_ip(sys.argv[1], dns_server)  # temporary dns ip
+    app_ip = get_app_ip(APP_SERVER_ADDR, dns_server)  # temporary dns ip
     if app_ip is None:
         print("No IP address received")
         exit(1)
     else:
-        print(f"IP address of {sys.argv[1]}: " + app_ip)
+        print(f"IP address of {APP_SERVER_ADDR} is " + app_ip)
 
     # connect to the web server and get the requested file:
     get_img_and_show(app_ip)

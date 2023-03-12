@@ -107,7 +107,7 @@ def send_request(server_address, request):
     # change parmameters to print more or less data, and to change packet loss,
     # default packet loss is -1 which means no packet loss
     client_socket = SCTPSocket(packet_size=1024, pkt_printer=True, cc_printer=True, packet_loss=-1)
-    client_socket.bind(("localhost", CLIENT_P))
+    client_socket.bind(('localhost', CLIENT_P))
     client_socket.connect(server_address)
     client_socket.sendto(request)
     response = client_socket.recvfrom(1024).decode()
@@ -140,7 +140,7 @@ def show_image(img_data):
 def save_image(img_data):
     img = Image.open(BytesIO(img_data))
     random_name = str(random.randint(0, 1000000))
-    img.save(f"cat{random_name}.png", format="PNG")
+    img.save(f'cat{random_name}.png', format='PNG')
 
 
 def get_img_from_local_server(host, port):
@@ -171,33 +171,20 @@ def get_img_and_show(app_ip):
     # from here change to clientttt!!!!!
     print((h,p))
     img_data = get_img_from_local_server(h, p)
-    print(f"got {len(img_data)} bytes")
-    show_image(img_data)
+    print(f'got {len(img_data)} bytes')
+    # show_image(img_data)
     save_image(img_data)
     print("saved image to curent directory")
 
 
 if __name__ == "__main__":
-
-    client_mac = generate_random_mac()  # generate random mac address for the client
-    print("Client MAC address: " + client_mac)
-    # input("Press Enter to continue...")
-    dns_server, new_ip = get_dns_ip()  # get the dns_ip from the dhcp server
-    if dns_server is None or new_ip is None:
-        print("No DNS server IP address received")
-        exit(1)
-    else:
-        print("Assigned IP address: " + new_ip)
-        print("DNS server: " + dns_server)
-
-    # get the ip of app.html from dns server
-    app_ip = get_app_ip(f"{APP_SERVER_ADDR}", dns_server)  # temporary dns ip
-    if app_ip is None:
-        print("No IP address received")
-        exit(1)
-    else:
-        print(f"IP address of {APP_SERVER_ADDR}: " + app_ip)
-
-    # # connect to the web server and get the requested file:
+    """
+    In test 2 we test the app_server and the data servers, to get 3 images from a single client.
+    """
+    client_mac = generate_random_mac()
+    app_ip = "127.0.0.1"
     get_img_and_show(app_ip)
-    print("Done.")
+    get_img_and_show(app_ip)
+    get_img_and_show(app_ip)
+
+    print("Test2 passed successfuly")

@@ -1,5 +1,3 @@
-import configparser
-
 from scapy.all import *
 from scapy.all import IP, sendp, sniff, UDP, Ether, BOOTP, DHCP
 DHCP_SERVER_IP = "192.168.1.100"
@@ -80,7 +78,6 @@ def handle_dhcp_request(packet):
 
 
 def handle_dhcp(packet):
-    packet.show()
     if DHCP in packet and packet[DHCP].options[0][1] == 1:  # DHCP discover
         handle_dhcp_discover(packet)
     if DHCP in packet and packet[DHCP].options[0][1] == 3:  # DHCP request
@@ -90,11 +87,9 @@ def handle_dhcp(packet):
 if __name__ == '__main__':
     # Start sniffing for DHCP packets
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-
     print("Starting DHCP server")
-    # p'rint(IFACES)
     while True:
         try:
-            sniff(filter=f"udp and dst port 67", iface=conf.iface, prn=handle_dhcp)
+            sniff(filter="udp and dst port 67", iface=conf.iface, prn=handle_dhcp)
         except:
             continue

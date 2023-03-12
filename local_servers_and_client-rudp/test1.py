@@ -95,7 +95,6 @@ def get_app_ip(domain_name, dns_server):
     while not response_received:
         for packet in sniff(filter=f"udp src port 53 and ip src {dns_server}",iface=IFACE, timeout=1, count=1):
             if DNS in packet and packet[DNS].rcode == 3:  # DNS error
-                print("Domain name not found")
                 return None
             if DNS in packet and packet[DNS].ancount > 0:
                 response_received = True
@@ -106,8 +105,8 @@ def get_app_ip(domain_name, dns_server):
 def send_request(server_address, request):
     # change parmameters to print more or less data, and to change packet loss,
     # default packet loss is -1 which means no packet loss
-    client_socket = SCTPSocket(packet_size=1024, pkt_printer=True, cc_printer=True, packet_loss=-1)
-    client_socket.bind(("localhost", CLIENT_P))
+    client_socket = SCTPSocket(packet_size=1024, pkt_printer=True, cc_printer=True, packet_loss=0.3)
+    client_socket.bind(('localhost', CLIENT_P))
     client_socket.connect(server_address)
     client_socket.sendto(request)
     response = client_socket.recvfrom(1024).decode()
@@ -140,7 +139,7 @@ def show_image(img_data):
 def save_image(img_data):
     img = Image.open(BytesIO(img_data))
     random_name = str(random.randint(0, 1000000))
-    img.save(f"cat{random_name}.png", format="PNG")
+    img.save(f'cat{random_name}.png', format='PNG')
 
 
 def get_img_from_local_server(host, port):
@@ -171,33 +170,35 @@ def get_img_and_show(app_ip):
     # from here change to clientttt!!!!!
     print((h,p))
     img_data = get_img_from_local_server(h, p)
-    print(f"got {len(img_data)} bytes")
+    print(f'got {len(img_data)} bytes')
     show_image(img_data)
     save_image(img_data)
     print("saved image to curent directory")
 
 
 if __name__ == "__main__":
+    """
+    In test 1 we run 2 clients on the dhcp and dns servers, and check for:
+    1. the ip adresses are not the same.
+    2. they get the same dns adress
+    3. the ip adress can change depends on the query to the dns
+    4. for a bad query the dns response won't work
+    """
+    client_mac = generate_random_mac()
+    dns_server1, new_ip1 = get_dns_ip()
+    client_mac = generate_random_mac()
+    dns_server2, new_ip2 = get_dns_ip()
 
-    client_mac = generate_random_mac()  # generate random mac address for the client
-    print("Client MAC address: " + client_mac)
-    # input("Press Enter to continue...")
-    dns_server, new_ip = get_dns_ip()  # get the dns_ip from the dhcp server
-    if dns_server is None or new_ip is None:
-        print("No DNS server IP address received")
-        exit(1)
-    else:
-        print("Assigned IP address: " + new_ip)
-        print("DNS server: " + dns_server)
+    app_ip = get_app_ip("the_famous_cat.com", dns_server1)
+    assert (app_ip == "127.0.0.1")
+    app_ip = get_app_ip("www.google.com", dns_server1)
+    assert (app_ip == "8.8.8.8")
+    app_ip = get_app_ip("www.themadafaka.com",dns_server1)
+    assert (app_ip == None)
 
-    # get the ip of app.html from dns server
-    app_ip = get_app_ip(f"{APP_SERVER_ADDR}", dns_server)  # temporary dns ip
-    if app_ip is None:
-        print("No IP address received")
-        exit(1)
-    else:
-        print(f"IP address of {APP_SERVER_ADDR}: " + app_ip)
 
-    # # connect to the web server and get the requested file:
-    get_img_and_show(app_ip)
-    print("Done.")
+    assert (new_ip1!=new_ip2)
+
+    assert(dns_server1=="192.168.1.200")
+    assert(dns_server2=="192.168.1.200")
+    print("Test1 passed successfuly")

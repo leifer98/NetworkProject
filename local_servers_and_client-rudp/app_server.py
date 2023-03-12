@@ -6,9 +6,9 @@ from SCTPSocket import SCTPSocket
 server_port = 30353
 # Define a list of servers to load balance between
 servers = [
-    'http://localhost:30354',  # got cat1.png
-    'http://localhost:30355',  # got cat2.png
-    'http://localhost:30356',  # got cat3.png
+    "http://localhost:30354",  # got cat1.png
+    "http://localhost:30355",  # got cat2.png
+    "http://localhost:30356",  # got cat3.png
 ]
 
 
@@ -35,9 +35,11 @@ def handle_request(conn, addr):
 
 # Define a function to start the server and listen for incoming connections
 def start_server():
-    server_socket =  SCTPSocket(packet_size=1024)
+    # change parmameters to print more or less data, and to change packet loss,
+    # default packet loss is -1 which means no packet loss
+    server_socket =  SCTPSocket(packet_size=1024, pkt_printer=True, cc_printer=True, packet_loss=0.5)
     server_socket.bind(('localhost', server_port))
-    print(f'Server started and listening on server_port {server_port}...')
+    print(f"Server started and listening on server_port {server_port}...")
     server_socket.listen()
     print("waiting for connection from client...")
     server_socket.accept()

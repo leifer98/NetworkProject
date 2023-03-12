@@ -5,9 +5,9 @@ import random
 server_port = 30353
 # Define a list of servers to load balance between
 servers = [
-    'http://localhost:30354',  # got cat1.png
-    'http://localhost:30355',  # got cat2.png
-    'http://localhost:30356',  # got cat3.png
+    "http://localhost:30354",  # got cat1.png
+    "http://localhost:30355",  # got cat2.png
+    "http://localhost:30356",  # got cat3.png
 ]
 
 
@@ -31,7 +31,7 @@ def start_server():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
         server_socket.bind(('localhost', server_port))
         server_socket.listen()
-        print(f'Server started and listening on server_port {server_port}...')
+        print(f"Server started and listening on server_port {server_port}...")
         while True:
             conn, addr = server_socket.accept()
             print(f"Request received from {addr}")

@@ -40,10 +40,10 @@ def start_server():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
         server_socket.bind(('localhost', server_port))
         server_socket.listen()
-        print(f'Server started and listening on server_port {server_port}...')
+        print(f"Server started and listening on server_port {server_port}...")
         while True:
             conn, addr = server_socket.accept()
-            print(f'Request received from {addr}')
+            print(f"Request received from {addr}")
             handle_request(conn, addr)
 
 

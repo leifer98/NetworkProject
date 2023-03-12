@@ -49,7 +49,7 @@ class SCTPSocket:
         for i in range(0,self.len):
             self.data_buffer.append(None)
 
-
+        self.close_flag = True
         if sock is None:
             self.socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
             self.socket.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
@@ -57,7 +57,7 @@ class SCTPSocket:
             self.socket = sock
 
         # self.socket.settimeout(timeout)  # set a timeout of 2 seconds
-        self.socket.settimeout(None)  # set a timeout of 2 seconds
+        self.socket.settimeout(0.2)  # set a timeout of 2 seconds
 
     def bind(self,tuple):
         self.addr = tuple[0]
@@ -84,6 +84,8 @@ class SCTPSocket:
     def close(self):
         if self.connected:
             self.shutdown(self.peer_tuple)
+        self.close_flag = True
+        time.sleep(2)
         self.socket.close()
 
     def sendto(self,payload,tuple = None):
@@ -165,7 +167,6 @@ class SCTPSocket:
             try:
                 if not self.connected: return
                 self.check_timer()
-                self.check_dup()
                 if self.peer_tsn in self.received_packets.keys():
                     pkt = self.received_packets[self.peer_tsn]
                     if pkt.haslayer(SCTPChunkSACK):
@@ -198,41 +199,47 @@ class SCTPSocket:
 
     def sniff_packets(self):
         print("started thread")
-        while True:
+        while self.close_flag:
             try:
                 data,addr = self.socket.recvfrom(self.packet_size)
                 pkt = SCTP(data)
 
-                rand_num = random.random()
-                if rand_num < self.packet_loss:
-                    # Packet loss
-                    if self.cc_printer:
-                        print("packet loss!")
-                    continue
-
                 if pkt.haslayer(SCTPChunkShutdown):
-                    if self.connected:
-                        self.parse_shutdown_packet(pkt[SCTPChunkShutdown])
+                    self.parse_shutdown_packet(pkt[SCTPChunkShutdown])
                     break
                 elif pkt.haslayer(SCTPChunkShutdownAck):
-                    if self.connected:
-                        self.received_packets[0] = pkt
+                    self.received_packets[0] = pkt
                     break
                 elif pkt.haslayer(SCTPChunkData):
+                    rand_num = random.random()
+                    if rand_num < self.packet_loss:
+                        # Packet loss
+                        if self.cc_printer:
+                            print(f"packet loss! tsn - {pkt[SCTPChunkData].tsn}")
+                        continue
                     if pkt[SCTPChunkData].tsn in self.dup_packets.keys():
                         self.dup_packets[pkt[SCTPChunkData].tsn]+=1
+                        self.check_dup()
                     else:
                         self.received_packets[pkt[SCTPChunkData].tsn] = pkt
                         self.dup_packets[pkt[SCTPChunkData].tsn] = 0
                 elif pkt.haslayer(SCTPChunkSACK):
+                    rand_num = random.random()
+                    if rand_num < self.packet_loss:
+                        # Packet loss
+                        if self.cc_printer:
+                            print(f"packet loss! tsn - {pkt[SCTPChunkSACK].cumul_tsn_ack}")
+                        continue
                     if pkt[SCTPChunkSACK].cumul_tsn_ack in self.dup_packets.keys():
                         self.dup_packets[pkt[SCTPChunkSACK].cumul_tsn_ack]+=1
+                        self.check_dup()
                     else:
                         self.received_packets[pkt[SCTPChunkSACK].cumul_tsn_ack] = pkt
                         self.dup_packets[pkt[SCTPChunkSACK].cumul_tsn_ack] = 0
                 elif pkt.haslayer(SCTPChunkInit):
                     if pkt[SCTPChunkInit].init_tsn in self.dup_packets.keys():
                         self.dup_packets[pkt[SCTPChunkInit].init_tsn]+=1
+                        self.check_dup()
                     else:
                         self.received_packets[pkt[SCTPChunkInit].init_tsn] = pkt
                         self.dup_packets[pkt[SCTPChunkInit].init_tsn] = 0
@@ -240,6 +247,7 @@ class SCTPSocket:
                 elif pkt.haslayer(SCTPChunkInitAck):
                     if pkt[SCTPChunkInitAck].init_tsn in self.dup_packets.keys():
                         self.dup_packets[pkt[SCTPChunkInitAck].init_tsn]+=1
+                        self.check_dup()
                     else:
                         self.received_packets[pkt[SCTPChunkInitAck].init_tsn] = pkt
                         self.dup_packets[pkt[SCTPChunkInitAck].init_tsn] = 0
@@ -344,7 +352,6 @@ class SCTPSocket:
     # cumul_tsn_ack = None,a_rwnd = None,n_gap_ack = None,n_dup_tsn = None,
     # gap_ack_list = [],dup_tsn_list = [])
     def create_data_ack_packet(self,pkt, addr):
-        self.check_dup()
 
         data_pkt = pkt[SCTPChunkData]
         packet = IP(dst=addr[0],src=self.addr) / \
@@ -354,6 +361,7 @@ class SCTPSocket:
                                a_rwnd=self.a_rwnd)
 
         # Reliability
+        self.sent_packets[self.local_tsn] = packet
         self.local_tsn += 1
 
         return packet
@@ -501,7 +509,14 @@ class SCTPSocket:
             print(f"in flight packets: {self.in_flight.keys()}")
             print(f"acknowledged packets: {self.acknowledged_packets.keys()}")
 
+        self.peer_tsn = 0
+        self.sent_packets = {}
+        self.received_packets = {}
+        self.acknowledged_packets = {}
+        self.in_flight = {}
         self.connected = False
+
+
         return True
 
     def parse_shutdown_ack_packet(self,pkt):
@@ -570,6 +585,7 @@ class SCTPSocket:
 
         if time.time() - self.start_time > self.timeout:
             self.timeout_counter += 1
+            self.start_time = time.time()
             try:
                 if self.cc_printer:
                     print(f"resended last packets")
@@ -590,23 +606,27 @@ class SCTPSocket:
                     else:
                         dup_pkts += 1
                     self.dup_packets[tsn] -= 3
+
+                    if self.cc_printer:
+                        print(f"duplicate packets detected, tsn - {tsn}")
+                    # try:
+                    if tsn in self.sent_packets.keys():
+                        for i in range(0,3):
+                            send(self.sent_packets[tsn],verbose=self.verbose,inter=self.delay)
+                        if self.cc_printer:
+                            print("sent 3 duplicate acks")
+                    else:
+                        print("failed to send 3 duplicate acks")
+                    # except:
+                    #     if self.cc_printer:
+                    #         print("failed to send 3 duplicate acks")
+
         except:
             self.check_dup()
             return
         if dup_pkts > 0:
-            if self.cc_printer:
-                print("duplicate packets detected")
-            try:
-                for i in range(0,3):
-                    for p in self.last_pkts:
-                        send(p,verbose=self.verbose,inter=self.delay)
-                if self.cc_printer:
-                    print("sent 3 duplicate acks")
-            except:
-                if self.cc_printer:
-                    print("failed to send 3 duplicate acks")
             self.a_rwnd = max(int(self.a_rwnd/(dup_pkts+1)),1)
-        elif dup_acks > 0:
+        if dup_acks > 0:
             if self.cc_printer:
                 print("duplicate acks detected")
             try:

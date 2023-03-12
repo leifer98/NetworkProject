@@ -13,7 +13,7 @@ def run_server(ip, port, image):
     s.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
     s.bind((ip, int(port)))
     s.listen(1)
-    print(f"ip is {ip}', port is {port}', image is {image}")
+    print(f"ip is {ip}, port is {port}, image is {image}")
     while True:
         conn, addr = s.accept()
         print(f"connected to client on port: {port}")
@@ -24,7 +24,7 @@ def run_server(ip, port, image):
                 break
             print(f"received: {data}")
             if data.startswith(b'GET'):
-                with open(image, 'rb') as f:
+                with open(image, "rb") as f:
                     conn.send(f.read())
         conn.close()
 
